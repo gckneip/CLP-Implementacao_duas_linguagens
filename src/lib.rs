@@ -1,14 +1,18 @@
 use pyo3::prelude::*;
+use std::thread;
+use std::time::Duration;
 
-/// Formats the sum of two numbers as string.
 #[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
+fn do_long_task() -> PyResult<String> {
+    println!("Iniciando tarefa longa em Rust...");
+    thread::sleep(Duration::from_secs(3)); // Simula um trabalho de 3 segundos
+    println!("Tarefa longa concluída!");
+    Ok("Tarefa concluída com sucesso!".to_string())
 }
 
-/// A Python module implemented in Rust.
+
 #[pymodule]
-fn pintada(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+fn pintada(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_wrapped(wrap_pyfunction!(do_long_task))?;
     Ok(())
 }
