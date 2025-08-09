@@ -1,56 +1,113 @@
 import tkinter as tk
 from tkinter import messagebox
-import pintada
+from board_state import Tabuleiro  
+# import pintada # O seu módulo Rust
 
-def on_button_click():
-    """Esta função é chamada quando o botão é clicado."""
+# Classe Menu
+class MenuFrame(tk.Frame):
+    def __init__(self, master, switch_to_board_callback):
+        super().__init__(master)
 
-    button_onca.config(state=tk.DISABLED)
-    
-    status_label.config(text="Aguarde, a tarefa em Rust está em execução...")
+        self.switch_to_board_callback = switch_to_board_callback
 
-    try:
+        tk.Label(self, text="Bem vindo ao", font=("Arial", 16)).pack(pady=10)
+        tk.Label(self, text="JOGO DA ONÇA", font=("Arial", 32, "bold"), fg="#D2691E").pack(pady=10)
+        tk.Label(self, text="Deseja jogar como...").pack(pady=20)
 
-        result = pintada.do_long_task()
-        messagebox.showinfo("Sucesso", f"O Rust retornou: {result}")
-    except Exception as e:
-        messagebox.showerror("Erro", f"Ocorreu um erro: {e}")
-    finally:
+        tk.Button(self, text="Onça", command=lambda: self.switch_to_board_callback("Onça")).pack(pady=5)
+        tk.Button(self, text="Matilha", command=lambda: self.switch_to_board_callback("Matilha")).pack(pady=5)
+
+# Classe Tabuleiro
+class TabuleiroFrame(tk.Frame):
+    def __init__(self, master, escolha_do_jogador):
+        super().__init__(master)
         
-        button_onca.config(state=tk.NORMAL)
-        status_label.config(text="Pronto para uma nova tarefa.")
+
+        self.escolha_do_jogador = escolha_do_jogador
+        self.modelo_tabuleiro = Tabuleiro()
+        
+        tk.Label(self, text=f"Sua vez, você joga como {self.escolha_do_jogador}").pack(pady=10)
+        
+    
+        self.canvas = tk.Canvas(self, width=600, height=800, bg="white")
+        self.canvas.pack(pady=10)
+
+        # Cria as coordenadas das casas
+        # Eventualmente será interessante definir as coordenadas com base em proporções do tamanho do canvas
+        self.coordenadas_casas = self.gerar_coordenadas_5x5()
+        self.coordenadas_casas[25] = (230, 600)
+        self.coordenadas_casas[26] = (300, 600)
+        self.coordenadas_casas[27] = (370, 600)
+        self.coordenadas_casas[28] = (160, 700)
+        self.coordenadas_casas[29] = (300, 700)
+        self.coordenadas_casas[30] = (440, 700)
+        
+        # Desenha o tabuleiro
+        self.desenhar_linhas()
+        self.casas_gui = {} 
+        self.desenhar_casas()
+
+    def gerar_coordenadas_5x5(self): 
+        coords = {}
+        margin = 100
+        spacing = 100
+        rows = 5
+        cols = 5
+        
+        for row in range(rows):
+            for col in range(cols):
+                house_id = row * cols + col
+                x = margin + col * spacing
+                y = margin + row * spacing
+                coords[house_id] = (x, y)
+        return coords
+
+    def desenhar_linhas(self):
+        for casa in self.modelo_tabuleiro.casas:
+            x1, y1 = self.coordenadas_casas[casa.id]
+            
+            for vizinho_id in casa.vizinhos:
+                if vizinho_id > casa.id:
+                    x2, y2 = self.coordenadas_casas[vizinho_id]
+                    
+                    self.canvas.create_line(x1, y1, x2, y2, fill="black", width=2)
+
+    def desenhar_casas(self):
+        """
+        Desenha os círculos das casas.
+        """
+        for id_casa, (x, y) in self.coordenadas_casas.items():
+            casa_id = self.canvas.create_oval(
+                x - 15, y - 15, x + 15, y + 15,
+                fill="lightgray", outline="black"
+            )
+            self.casas_gui[id_casa] = casa_id
 
 
-root = tk.Tk()
-root.title("Integração Python + Rust")
 
-pre_title_label = tk.Label(
-    root,
-    text="Bem vindo ao",
-    font=("Arial", 16),
-    pady=20,
-    )
-pre_title_label.grid(row=0, column=0)
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Jogo da Onça")
+        self.geometry("800x800")
 
-title_label = tk.Label(
-    root,
-    text="JOGO DA ONÇA",
-    font=("Arial", 32, "bold"),
-    fg="#D2691E",
-    #bg="#FFF8DC",
-    pady=20,
-    padx=20
-)
+        self.menu_frame = MenuFrame(self, self.show_board_frame)
+        self.tabuleiro_frame = None
 
-title_label.grid(row=0, column=1, sticky="ew")
+        self.show_menu_frame()
 
-status_label = tk.Label(root, text="Deseja jogar como...")
+    def show_menu_frame(self):
+        if self.tabuleiro_frame:
+            self.tabuleiro_frame.pack_forget()
+        self.menu_frame.pack(expand=True, fill='both')
 
-status_label.grid(row=0, pady=20, padx=20, column=20)
+    def show_board_frame(self, escolha_do_jogador):
+        self.menu_frame.pack_forget()
+        
+        self.tabuleiro_frame = TabuleiroFrame(self, escolha_do_jogador)
+        self.tabuleiro_frame.pack(expand=True, fill='both')
 
 
-button_onca = tk.Button(root, text="Executar Tarefa em Rust", command=on_button_click)
-
-button_onca.grid(row=1, padx=20, pady=5, column=0, columnspan=89, sticky="ew")
-
-root.mainloop()
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
