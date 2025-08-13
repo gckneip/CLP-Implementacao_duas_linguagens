@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
+from board_state import Tabuleiro 
 import pintada  # Módulo Rust
 
 # Classe Menu
@@ -30,6 +31,7 @@ class TabuleiroFrame(tk.Frame):
 
         self.jogo_rust = pintada.Jogo()  # Instância do jogo no Rust
         self.escolha_do_jogador = escolha_do_jogador
+        self.modelo_tabuleiro = Tabuleiro()
 
         tk.Label(self, text=f"Sua vez, você joga como {self.escolha_do_jogador}").pack(pady=10)
         self.canvas = tk.Canvas(self, width=600, height=800, bg="white")
@@ -67,8 +69,14 @@ class TabuleiroFrame(tk.Frame):
         return coords
 
     def desenhar_linhas(self):
-        # Aqui você teria que definir as conexões manualmente
-        # ou pegar de um modelo como "board_state.py"
+        for casa in self.modelo_tabuleiro.casas:
+            x1, y1 = self.coordenadas_casas[casa.id]
+
+            for vizinho_id in casa.vizinhos:
+                if vizinho_id > casa.id:
+                    x2, y2 = self.coordenadas_casas[vizinho_id]
+
+                    self.canvas.create_line(x1, y1, x2, y2, fill="black", width=2)
         pass
 
     def desenhar_casas(self):
@@ -99,12 +107,21 @@ class TabuleiroFrame(tk.Frame):
 
     def on_click(self, event):
       x, y = event.x, event.y
+      casa_encontrada = False # Variável de flag para rastrear o clique
+
       for pos, (cx, cy) in self.coordenadas_casas.items():
           if (x - cx)**2 + (y - cy)**2 <= 15**2:
-              self.selecao.append(pos)
-              self.atualizar_tabuleiro()
-              if len(self.selecao) == 2:
-                  from_pos, to_pos = self.selecao
+              casa_encontrada = True # O clique foi em uma casa
+              
+              # --- Lógica de Seleção e Jogada ---
+              # 1. Se a seleção está vazia, adiciona a casa
+              if not self.selecao:
+                  self.selecao.append(pos)
+              # 2. Se já tem uma casa selecionada, tenta fazer a jogada
+              else:
+                  from_pos, to_pos = self.selecao[0], pos
+                  self.selecao.append(pos) # Adiciona a segunda casa temporariamente para a jogada
+                  
                   try:
                       sucesso = self.jogo_rust.aplicar_jogada(from_pos, to_pos)
                   except Exception as e:
@@ -120,8 +137,18 @@ class TabuleiroFrame(tk.Frame):
                   else:
                       messagebox.showinfo("Erro", "Jogada inválida")
 
-                  self.selecao = []
-              break
+                  self.selecao = [] # Limpa a seleção após tentar a jogada
+              
+              break # Sai do loop for, pois a casa foi encontrada
+      
+      # --- Lógica para clique em área vazia ---
+      if not casa_encontrada:
+          # Se o loop terminou e nenhuma casa foi encontrada...
+          if self.selecao: # ... e se houver uma casa selecionada
+              self.selecao = [] # Limpa a seleção
+              self.atualizar_tabuleiro() # Atualiza o visual para desmarcar a peça
+              
+      self.atualizar_tabuleiro() # Atualiza o tabuleiro, caso a seleção tenha mudado
 
 
 class App(tk.Tk):
