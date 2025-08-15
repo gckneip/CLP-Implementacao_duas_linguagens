@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
-use std::thread;
 use std::collections::HashMap;
+use std::thread;
 
 #[pyclass]
 pub struct Jogo {
@@ -61,14 +61,16 @@ impl Jogo {
             // Movimento normal
             if self.vizinhos.get(&from).unwrap_or(&vec![]).contains(&to) {
                 if self.posicoes.contains_key(&to) {
-                    println!("Jogada inválida: posição de destino {} já ocupada", to);
                     return Ok(false);
                 }
                 self.mover(from, to);
                 let jogador_da_vez = self.vez.clone();
                 let jogada_atual = (from, to);
 
-                let contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+                let mut contador = self
+                    .contagem_repeticoes
+                    .entry(jogador_da_vez.clone())
+                    .or_insert(0);
 
                 if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
                     if *ultima_jogada == (to, from) {
@@ -81,8 +83,9 @@ impl Jogo {
                     *contador = 1;
                 }
 
-                self.ultimas_jogadas.insert(jogador_da_vez.clone(), jogada_atual);
-    
+                self.ultimas_jogadas
+                    .insert(jogador_da_vez.clone(), jogada_atual);
+
                 return Ok(true);
             }
 
@@ -121,15 +124,27 @@ impl Jogo {
             let jogador_da_vez_clone = jogador_da_vez.clone();
 
             let handle = thread::spawn(move || {
-                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = jogo_clone.simular_jogada(from, to);
+                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) =
+                    jogo_clone.simular_jogada(from, to);
 
                 let (_, pontuacao) = jogo_clone.minimax(
                     profundidade - 1,
-                    false, 
-                    if jogador_da_vez_clone == "Matilha" { "Onça" } else { "Matilha" },
+                    false,
+                    if jogador_da_vez_clone == "Matilha" {
+                        "Onça"
+                    } else {
+                        "Matilha"
+                    },
                 );
 
-                jogo_clone.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
+                jogo_clone.desfazer_jogada(
+                    from,
+                    to,
+                    captura,
+                    peca_movida,
+                    estado_anterior_jogada,
+                    estado_anterior_repeticoes,
+                );
 
                 (from, to, pontuacao)
             });
@@ -142,15 +157,27 @@ impl Jogo {
             let jogador_da_vez_clone = jogador_da_vez.clone();
 
             let handle = thread::spawn(move || {
-                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = jogo_clone.simular_jogada(from, to);
+                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) =
+                    jogo_clone.simular_jogada(from, to);
 
                 let (_, pontuacao) = jogo_clone.minimax(
                     profundidade - 1,
-                    false, 
-                    if jogador_da_vez_clone == "Matilha" { "Onça" } else { "Matilha" },
+                    false,
+                    if jogador_da_vez_clone == "Matilha" {
+                        "Onça"
+                    } else {
+                        "Matilha"
+                    },
                 );
 
-                jogo_clone.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
+                jogo_clone.desfazer_jogada(
+                    from,
+                    to,
+                    captura,
+                    peca_movida,
+                    estado_anterior_jogada,
+                    estado_anterior_repeticoes,
+                );
 
                 (from, to, pontuacao)
             });
@@ -168,24 +195,28 @@ impl Jogo {
         if let Some((from, to)) = melhor_jogada {
             self.aplicar_jogada(from, to)?;
         }
-      Ok(())
-    } 
+        Ok(())
+    }
 
     pub fn jogo_terminou(&self) -> bool {
         if self.obter_jogadas_possiveis("Onça").is_empty() {
             return true;
         }
-        let pecas_matilha = self.posicoes.values().filter(|p| p.as_str() == "Matilha").count();
+        let pecas_matilha = self
+            .posicoes
+            .values()
+            .filter(|p| p.as_str() == "Matilha")
+            .count();
         if pecas_matilha < 9 {
             return true;
         }
         if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
-        if *contador > 3 {
-            return true;
+            if *contador > 3 {
+                return true;
+            }
         }
-    } 
-    false
-  }
+        false
+    }
 }
 
 impl Jogo {
@@ -216,79 +247,109 @@ impl Jogo {
         jogadas
     }
 
-fn simular_jogada(&mut self, from: usize, to: usize) -> (Option<(usize, String)>, String, HashMap<String, (usize, usize)>, HashMap<String, u8>) {
-    let mut captura = None;
-    let peca_movida = self.posicoes.remove(&from).unwrap();
+    fn simular_jogada(
+        &mut self,
+        from: usize,
+        to: usize,
+    ) -> (
+        Option<(usize, String)>,
+        String,
+        HashMap<String, (usize, usize)>,
+        HashMap<String, u8>,
+    ) {
+        let mut captura = None;
+        let peca_movida = self.posicoes.remove(&from).unwrap();
 
-    if peca_movida == "Onça" {
-        if let Some(saltos) = self.saltos.get(&from) {
-            for (inter, destino) in saltos {
-                if *destino == to {
-                    let peca_capturada = self.posicoes.remove(inter).unwrap();
-                    captura = Some((*inter, peca_capturada));
-                    break;
+        if peca_movida == "Onça" {
+            if let Some(saltos) = self.saltos.get(&from) {
+                for (inter, destino) in saltos {
+                    if *destino == to {
+                        let peca_capturada = self.posicoes.remove(inter).unwrap();
+                        captura = Some((*inter, peca_capturada));
+                        break;
+                    }
                 }
             }
         }
-    }
-    
-    let ultimas_jogadas_anterior = self.ultimas_jogadas.clone();
-    let contagem_repeticoes_anterior = self.contagem_repeticoes.clone();
 
-    let jogador_da_vez = self.vez.clone();
-    let jogada_atual = (from, to);
-    let contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+        let ultimas_jogadas_anterior = self.ultimas_jogadas.clone();
+        let contagem_repeticoes_anterior = self.contagem_repeticoes.clone();
 
-    if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
-        if *ultima_jogada == jogada_atual {
-            *contador += 1;
+        let jogador_da_vez = self.vez.clone();
+        let jogada_atual = (from, to);
+        let mut contador = self
+            .contagem_repeticoes
+            .entry(jogador_da_vez.clone())
+            .or_insert(0);
+
+        if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
+            if *ultima_jogada == jogada_atual {
+                *contador += 1;
+            } else {
+                *contador = 1;
+            }
         } else {
             *contador = 1;
         }
-    } else {
-        *contador = 1;
+        self.ultimas_jogadas
+            .insert(jogador_da_vez.clone(), jogada_atual);
+
+        self.posicoes.insert(to, peca_movida.clone());
+
+        (
+            captura,
+            peca_movida,
+            ultimas_jogadas_anterior,
+            contagem_repeticoes_anterior,
+        )
     }
-    self.ultimas_jogadas.insert(jogador_da_vez.clone(), jogada_atual);
 
-    self.posicoes.insert(to, peca_movida.clone());
+    fn desfazer_jogada(
+        &mut self,
+        from: usize,
+        to: usize,
+        captura: Option<(usize, String)>,
+        peca_movida: String,
+        ultimas_jogadas_anterior: HashMap<String, (usize, usize)>,
+        contagem_repeticoes_anterior: HashMap<String, u8>,
+    ) {
+        self.posicoes.remove(&to);
+        self.posicoes.insert(from, peca_movida);
 
-    (captura, peca_movida, ultimas_jogadas_anterior, contagem_repeticoes_anterior)
-}
+        if let Some((pos_captura, peca_capturada)) = captura {
+            self.posicoes.insert(pos_captura, peca_capturada);
+        }
 
-fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, String)>, peca_movida: String, ultimas_jogadas_anterior: HashMap<String, (usize, usize)>, contagem_repeticoes_anterior: HashMap<String, u8>) {
-    self.posicoes.remove(&to);
-    self.posicoes.insert(from, peca_movida);
-    
-    if let Some((pos_captura, peca_capturada)) = captura {
-        self.posicoes.insert(pos_captura, peca_capturada);
+        self.ultimas_jogadas = ultimas_jogadas_anterior;
+        self.contagem_repeticoes = contagem_repeticoes_anterior;
     }
-    
-    self.ultimas_jogadas = ultimas_jogadas_anterior;
-    self.contagem_repeticoes = contagem_repeticoes_anterior;
-}
     fn avaliar_tabuleiro_matilha(&self) -> i32 {
         if self.jogo_terminou() {
             if self.obter_jogadas_possiveis("Onça").is_empty() {
-                return i32::max_value(); 
+                return i32::max_value();
             }
-            let pecas_matilha = self.posicoes.values().filter(|p| p.as_str() == "Matilha").count();
+            let pecas_matilha = self
+                .posicoes
+                .values()
+                .filter(|p| p.as_str() == "Matilha")
+                .count();
             if pecas_matilha < 9 {
-                return i32::min_value(); 
+                return i32::min_value();
             }
         }
-       if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
+        if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
             if *contador >= 3 {
                 if self.vez == "Matilha" {
                     return i32::min_value();
                 } else {
-                    return i32::max_value();
+                    //return i32::max_value();
                 }
             }
         }
 
         let peso_pecas = 100;
-        let peso_mobilidade_onca = -50; 
-        let peso_posicao_central_onca = -20; 
+        let peso_mobilidade_onca = -50;
+        let peso_posicao_central_onca = -20;
 
         let mut pontuacao = 0;
 
@@ -296,7 +357,11 @@ fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, St
         pontuacao += pecas_matilha as i32 * peso_pecas;
 
         let mut mobilidade_onca = 0;
-        let pos_onca = self.posicoes.iter().find(|(_, &ref p)| p == "Onça").map(|(&k, _)| k);
+        let pos_onca = self
+            .posicoes
+            .iter()
+            .find(|(_, &ref p)| p == "Onça")
+            .map(|(&k, _)| k);
 
         if let Some(pos) = pos_onca {
             if let Some(vizinhos) = self.vizinhos.get(&pos) {
@@ -323,93 +388,130 @@ fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, St
     }
 
     fn avaliar_tabuleiro_onca(&self) -> i32 {
-      let peso_pecas = -100;
-      let peso_mobilidade_onca = 50;
-      let peso_posicao_central_onca = 20;
-
-      let mut pontuacao = 0;
-
-      let pecas_matilha = self.posicoes.values().filter(|p| *p == "Matilha").count();
-      pontuacao += pecas_matilha as i32 * peso_pecas;
-
-      let mut mobilidade_onca = 0;
-      let pos_onca = self
-          .posicoes
-          .iter()
-          .find(|(_, &ref p)| p == "Onça")
-          .map(|(&k, _)| k);
-
-      if let Some(pos) = pos_onca {
-          if let Some(vizinhos) = self.vizinhos.get(&pos) {
-              for &vizinho_pos in vizinhos {
-                  if !self.posicoes.contains_key(&vizinho_pos) {
-                      mobilidade_onca += 1;
-                  }
-              }
-          }
-      }
-      pontuacao += mobilidade_onca * peso_mobilidade_onca;
-
-      if let Some(pos) = pos_onca {
-          if pos == 12 {
-              pontuacao += peso_posicao_central_onca;
-          }
-      }
-
-      if mobilidade_onca == 0 && pos_onca.is_some() {
-          // caught in the undertow just caught in the undertow
-          pontuacao = i32::MIN;
-      }
-
-      pontuacao
-  }
-
-  fn minimax(
-    &mut self,
-    profundidade: u8,
-    is_max_player: bool,
-    jogador_da_vez: &str, 
-  ) -> (Option<(usize, usize)>, i32) {
-    if profundidade == 0 || self.jogo_terminou() { 
-        let mut pontuacao = if self.cpu == "Matilha" { self.avaliar_tabuleiro_matilha()}  else {self.avaliar_tabuleiro_onca()};
-        if !is_max_player {
-            pontuacao *= -1;
-        }
-        return (None, pontuacao);
-    }
-    
-
-    let mut melhor_pontuacao = if is_max_player { i32::min_value() } else { i32::max_value() };
-    let mut melhor_jogada = None;
-
-    let jogadas_possiveis = self.obter_jogadas_possiveis(jogador_da_vez);
-
-    for (from, to) in jogadas_possiveis {
-        let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = self.simular_jogada(from, to);
-
-        let (_, pontuacao) = self.minimax(
-            profundidade - 1, 
-            !is_max_player, 
-            if jogador_da_vez == "Matilha" { "Onça" } else { "Matilha" }
-        );
-
-        self.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
-
-        if is_max_player {
-            if pontuacao > melhor_pontuacao {
-                melhor_pontuacao = pontuacao;
-                melhor_jogada = Some((from, to));
+        if self.jogo_terminou() {
+            let pecas_matilha = self
+                .posicoes
+                .values()
+                .filter(|p| p.as_str() == "Matilha")
+                .count();
+            if pecas_matilha < 9 {
+                return i32::MAX;
+            } else {
+                return i32::MIN;
             }
+        }
+        if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
+            if *contador >= 3 {
+                if self.vez == "Onça" {
+                    return i32::MIN;
+                } else {
+                    //return i32::max_value();
+                }
+            }
+        }
+        let peso_pecas = -1000;
+        let peso_mobilidade_onca = 50;
+        let peso_posicao_central_onca = 20;
+
+        let mut pontuacao = 0;
+
+        let pecas_matilha = self.posicoes.values().filter(|p| *p == "Matilha").count();
+        pontuacao += pecas_matilha as i32 * peso_pecas;
+
+        let mut mobilidade_onca = 0;
+        let pos_onca = self
+            .posicoes
+            .iter()
+            .find(|(_, &ref p)| p == "Onça")
+            .map(|(&k, _)| k);
+
+        if let Some(pos) = pos_onca {
+            if let Some(vizinhos) = self.vizinhos.get(&pos) {
+                for &vizinho_pos in vizinhos {
+                    if !self.posicoes.contains_key(&vizinho_pos) {
+                        mobilidade_onca += 1;
+                    }
+                }
+            }
+        }
+        pontuacao += mobilidade_onca * peso_mobilidade_onca;
+
+        if let Some(pos) = pos_onca {
+            if pos == 12 {
+                pontuacao += peso_posicao_central_onca;
+            }
+        }
+
+        if mobilidade_onca == 0 && pos_onca.is_some() {
+            // caught in the undertow just caught in the undertow
+            pontuacao = i32::MIN;
+        }
+
+        pontuacao
+    }
+
+    fn minimax(
+        &mut self,
+        profundidade: u8,
+        is_max_player: bool,
+        jogador_da_vez: &str,
+    ) -> (Option<(usize, usize)>, i32) {
+        if profundidade == 0 || self.jogo_terminou() {
+            let mut pontuacao = if self.cpu == "Matilha" {
+                self.avaliar_tabuleiro_matilha()
+            } else {
+                self.avaliar_tabuleiro_onca()
+            };
+            return (None, pontuacao);
+        }
+
+        let mut melhor_pontuacao = if is_max_player {
+            i32::min_value()
         } else {
-            if pontuacao < melhor_pontuacao {
-                melhor_pontuacao = pontuacao;
-                melhor_jogada = Some((from, to));
+            i32::max_value()
+        };
+        let mut melhor_jogada = None;
+
+        let jogadas_possiveis = self.obter_jogadas_possiveis(jogador_da_vez);
+
+        for (from, to) in jogadas_possiveis {
+            let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) =
+                self.simular_jogada(from, to);
+
+            let (_, pontuacao) = self.minimax(
+                profundidade - 1,
+                !is_max_player,
+                if jogador_da_vez == "Matilha" {
+                    "Onça"
+                } else {
+                    "Matilha"
+                },
+            );
+
+            self.desfazer_jogada(
+                from,
+                to,
+                captura,
+                peca_movida,
+                estado_anterior_jogada,
+                estado_anterior_repeticoes,
+            );
+
+            if is_max_player {
+                if pontuacao > melhor_pontuacao {
+                    melhor_pontuacao = pontuacao;
+                    melhor_jogada = Some((from, to));
+                }
+            } else {
+                if pontuacao < melhor_pontuacao {
+                    melhor_pontuacao = pontuacao;
+                    melhor_jogada = Some((from, to));
+                }
             }
         }
-    }
 
-    (melhor_jogada, melhor_pontuacao)
-}
+        (melhor_jogada, melhor_pontuacao)
+    }
     fn mover(&mut self, from: usize, to: usize) {
         let peca = self.posicoes.remove(&from).unwrap();
         self.posicoes.insert(to, peca);
@@ -480,7 +582,7 @@ fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, St
             (17, vec![(22, 26)]),
             (18, vec![(12, 6), (22, 25)]),
             (20, vec![(16, 12)]),
-            (22, vec![(16, 10), (18, 14), (25, 28), (26,29), (27, 30)]),
+            (22, vec![(16, 10), (18, 14), (25, 28), (26, 29), (27, 30)]),
             (24, vec![(18, 12)]),
             (25, vec![(22, 18), (26, 27)]),
             (26, vec![(22, 17)]),
@@ -533,4 +635,3 @@ impl Clone for Jogo {
         }
     }
 }
-

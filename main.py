@@ -64,7 +64,6 @@ class TabuleiroFrame(tk.Frame):
         if jogador_da_vez == oponente:
             self.jogo_rust.jogada_cpu()
             self.atualizar_tabuleiro()
-            # Adicione uma verificação de fim de jogo aqui se desejar
 
     def gerar_coordenadas_5x5(self):
         coords = {}
@@ -142,6 +141,8 @@ class TabuleiroFrame(tk.Frame):
                       self.atualizar_tabuleiro()
                       if self.jogo_rust.jogo_terminou():
                         messagebox.showinfo("Fim de Jogo", "O jogo terminou!")
+                        self.master.after(100, self.master.show_menu_frame)
+                        
                       else:
                       # Turno da CPU
                         self.after(100, self.verificar_turno_cpu)
@@ -149,6 +150,7 @@ class TabuleiroFrame(tk.Frame):
                         self.atualizar_tabuleiro()
                         if self.jogo_rust.jogo_terminou():
                             messagebox.showinfo("Fim de Jogo", "O jogo terminou!")
+                            self.master.after(100, self.master.show_menu_frame)
                   else:
                       messagebox.showinfo("Erro", "Jogada inválida")
 
@@ -176,6 +178,8 @@ class App(tk.Tk):
     def show_menu_frame(self):
         if self.tabuleiro_frame:
             self.tabuleiro_frame.pack_forget()
+            self.tabuleiro_frame.destroy()
+            self.tabuleiro_frame = None;
         self.menu_frame.pack(expand=True, fill="both")
 
     def show_board_frame(self, escolha_do_jogador):
