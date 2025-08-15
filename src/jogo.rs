@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
-use std::collections::HashMap;
 use std::thread;
+use std::collections::HashMap;
 
 #[pyclass]
 pub struct Jogo {
@@ -9,6 +9,8 @@ pub struct Jogo {
     vizinhos: HashMap<usize, Vec<usize>>,
     saltos: HashMap<usize, Vec<(usize, usize)>>,
     cpu: String,
+    ultimas_jogadas: HashMap<String, (usize, usize)>,
+    contagem_repeticoes: HashMap<String, u8>,
 }
 
 #[pymethods]
@@ -37,6 +39,8 @@ impl Jogo {
             vez: "Onça".to_string(),
             vizinhos,
             saltos,
+            ultimas_jogadas: HashMap::new(),
+            contagem_repeticoes: HashMap::new(),
         }
     }
 
@@ -48,14 +52,6 @@ impl Jogo {
         self.vez.clone()
     }
 
-    fn trocar_vez(&mut self) {
-        if self.vez == "Onça" {
-            self.vez = "Matilha".to_string();
-        } else {
-            self.vez = "Onça".to_string();
-        }
-    }
-
     fn aplicar_jogada(&mut self, from: usize, to: usize) -> PyResult<bool> {
         if let Some(jogador) = self.posicoes.get(&from) {
             if *jogador != self.vez {
@@ -65,9 +61,27 @@ impl Jogo {
             // Movimento normal
             if self.vizinhos.get(&from).unwrap_or(&vec![]).contains(&to) {
                 if self.posicoes.contains_key(&to) {
+                    println!("Jogada inválida: posição de destino {} já ocupada", to);
                     return Ok(false);
                 }
                 self.mover(from, to);
+                let jogador_da_vez = self.vez.clone();
+                let jogada_atual = (from, to);
+
+                let mut contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+
+                if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
+                    if *ultima_jogada == (to, from) {
+                        *contador += 1;
+                    } else {
+                        *contador = 1;
+                    }
+                } else {
+                    *contador = 1;
+                }
+
+                self.ultimas_jogadas.insert(jogador_da_vez.clone(), jogada_atual);
+    
                 return Ok(true);
             }
 
@@ -90,9 +104,6 @@ impl Jogo {
         }
         Ok(false)
     }
-
-    // Falta colocar a IA da onça aqui
-    // RENAN: não é aqui não caralho, entra no minmax (o que muda é a função de avaliação)
     fn jogada_cpu(&mut self) -> PyResult<()> {
         let jogador_da_vez = self.vez.clone();
         let profundidade = 5;
@@ -109,19 +120,36 @@ impl Jogo {
             let jogador_da_vez_clone = jogador_da_vez.clone();
 
             let handle = thread::spawn(move || {
-                let (captura, peca_movida) = jogo_clone.simular_jogada(from, to);
+                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = jogo_clone.simular_jogada(from, to);
 
                 let (_, pontuacao) = jogo_clone.minimax(
                     profundidade - 1,
-                    false,
-                    if jogador_da_vez_clone == "Matilha" {
-                        "Onça"
-                    } else {
-                        "Matilha"
-                    },
+                    false, 
+                    if jogador_da_vez_clone == "Matilha" { "Onça" } else { "Matilha" },
                 );
 
-                jogo_clone.desfazer_jogada(from, to, captura, peca_movida);
+                jogo_clone.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
+
+                (from, to, pontuacao)
+            });
+            handles.push(handle);
+        }
+        let mut melhor_jogada = Some(jogadas_possiveis[0]);
+        let mut melhor_pontuacao = i32::min_value();
+        for (from, to) in jogadas_possiveis.clone() {
+            let mut jogo_clone = self.clone();
+            let jogador_da_vez_clone = jogador_da_vez.clone();
+
+            let handle = thread::spawn(move || {
+                let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = jogo_clone.simular_jogada(from, to);
+
+                let (_, pontuacao) = jogo_clone.minimax(
+                    profundidade - 1,
+                    false, 
+                    if jogador_da_vez_clone == "Matilha" { "Onça" } else { "Matilha" },
+                );
+
+                jogo_clone.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
 
                 (from, to, pontuacao)
             });
@@ -142,14 +170,29 @@ impl Jogo {
         if let Some((from, to)) = melhor_jogada {
             self.aplicar_jogada(from, to)?;
         }
-        return Ok(());
-    }
+      Ok(())
+    } 
+
+    pub fn jogo_terminou(&self) -> bool {
+        if self.obter_jogadas_possiveis("Onça").is_empty() {
+            return true;
+        }
+        let pecas_matilha = self.posicoes.values().filter(|p| p.as_str() == "Matilha").count();
+        if pecas_matilha < 9 {
+            return true;
+        }
+        if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
+        if *contador >= 3 {
+            return true;
+        }
+    } 
+    false
+  }
 }
 
 impl Jogo {
     fn obter_jogadas_possiveis(&self, jogador: &str) -> Vec<(usize, usize)> {
         let mut jogadas = Vec::new();
-
         for (&from_pos, dono) in &self.posicoes {
             if dono == jogador {
                 if let Some(vizinhos) = self.vizinhos.get(&from_pos) {
@@ -159,7 +202,6 @@ impl Jogo {
                         }
                     }
                 }
-
                 if dono == "Onça" {
                     if let Some(saltos) = self.saltos.get(&from_pos) {
                         for (inter, destino) in saltos {
@@ -176,45 +218,79 @@ impl Jogo {
         jogadas
     }
 
-    fn simular_jogada(&mut self, from: usize, to: usize) -> (Option<(usize, String)>, String) {
-        let mut captura = None;
-        let peca_movida = self.posicoes.remove(&from).unwrap();
+fn simular_jogada(&mut self, from: usize, to: usize) -> (Option<(usize, String)>, String, HashMap<String, (usize, usize)>, HashMap<String, u8>) {
+    let mut captura = None;
+    let peca_movida = self.posicoes.remove(&from).unwrap();
 
-        if peca_movida == "Onça" {
-            if let Some(saltos) = self.saltos.get(&from) {
-                for (inter, destino) in saltos {
-                    if *destino == to {
-                        let peca_capturada = self.posicoes.remove(inter).unwrap();
-                        captura = Some((*inter, peca_capturada));
-                        break;
-                    }
+    if peca_movida == "Onça" {
+        if let Some(saltos) = self.saltos.get(&from) {
+            for (inter, destino) in saltos {
+                if *destino == to {
+                    let peca_capturada = self.posicoes.remove(inter).unwrap();
+                    captura = Some((*inter, peca_capturada));
+                    break;
+                }
+            }
+        }
+    }
+    
+    let ultimas_jogadas_anterior = self.ultimas_jogadas.clone();
+    let contagem_repeticoes_anterior = self.contagem_repeticoes.clone();
+
+    let jogador_da_vez = self.vez.clone();
+    let jogada_atual = (from, to);
+    let mut contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+
+    if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
+        if *ultima_jogada == jogada_atual {
+            *contador += 1;
+        } else {
+            *contador = 1;
+        }
+    } else {
+        *contador = 1;
+    }
+    self.ultimas_jogadas.insert(jogador_da_vez.clone(), jogada_atual);
+
+    self.posicoes.insert(to, peca_movida.clone());
+
+    (captura, peca_movida, ultimas_jogadas_anterior, contagem_repeticoes_anterior)
+}
+
+fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, String)>, peca_movida: String, ultimas_jogadas_anterior: HashMap<String, (usize, usize)>, contagem_repeticoes_anterior: HashMap<String, u8>) {
+    self.posicoes.remove(&to);
+    self.posicoes.insert(from, peca_movida);
+    
+    if let Some((pos_captura, peca_capturada)) = captura {
+        self.posicoes.insert(pos_captura, peca_capturada);
+    }
+    
+    self.ultimas_jogadas = ultimas_jogadas_anterior;
+    self.contagem_repeticoes = contagem_repeticoes_anterior;
+}
+    fn avaliar_tabuleiro_matilha(&self) -> i32 {
+        if self.jogo_terminou() {
+            if self.obter_jogadas_possiveis("Onça").is_empty() {
+                return i32::max_value(); 
+            }
+            let pecas_matilha = self.posicoes.values().filter(|p| p.as_str() == "Matilha").count();
+            if pecas_matilha < 9 {
+                return i32::min_value(); 
+            }
+        }
+       if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
+            if *contador >= 3 {
+                if self.vez == "Matilha" {
+                    return i32::min_value();
+                } else {
+                    return i32::max_value();
                 }
             }
         }
 
-        self.posicoes.insert(to, peca_movida.clone());
-        (captura, peca_movida)
-    }
-
-    fn desfazer_jogada(
-        &mut self,
-        from: usize,
-        to: usize,
-        captura: Option<(usize, String)>,
-        peca_movida: String,
-    ) {
-        self.posicoes.remove(&to);
-        self.posicoes.insert(from, peca_movida);
-
-        if let Some((pos_captura, peca_capturada)) = captura {
-            self.posicoes.insert(pos_captura, peca_capturada);
-        }
-    }
-
-    fn avaliar_tabuleiro_matilha(&self) -> i32 {
         let peso_pecas = 100;
-        let peso_mobilidade_onca = -50;
-        let peso_posicao_central_onca = -20;
+        let peso_mobilidade_onca = -50; 
+        let peso_posicao_central_onca = -20; 
 
         let mut pontuacao = 0;
 
@@ -222,11 +298,7 @@ impl Jogo {
         pontuacao += pecas_matilha as i32 * peso_pecas;
 
         let mut mobilidade_onca = 0;
-        let pos_onca = self
-            .posicoes
-            .iter()
-            .find(|(_, &ref p)| p == "Onça")
-            .map(|(&k, _)| k);
+        let pos_onca = self.posicoes.iter().find(|(_, &ref p)| p == "Onça").map(|(&k, _)| k);
 
         if let Some(pos) = pos_onca {
             if let Some(vizinhos) = self.vizinhos.get(&pos) {
@@ -293,61 +365,52 @@ impl Jogo {
         pontuacao
     }
 
-    fn minimax(
-        &mut self,
-        profundidade: u8,
-        is_max_player: bool,
-        jogador_da_vez: &str,
-    ) -> (Option<(usize, usize)>, i32) {
-        if profundidade == 0 {
-            //|| self.jogo_terminou() { --> fala a verificação de condição de fim de jogo
-            if self.cpu == "Matilha" {
-                return (None, self.avaliar_tabuleiro_matilha());
-            } else {
-                return (None, self.avaliar_tabuleiro_onca());
-            }
+  fn minimax(
+    &mut self,
+    profundidade: u8,
+    is_max_player: bool,
+    jogador_da_vez: &str, 
+  ) -> (Option<(usize, usize)>, i32) {
+    if profundidade == 0 || self.jogo_terminou() { 
+        let mut pontuacao = if self.cpu == "Matilha" { self.avaliar_tabuleiro_matilha()}  else {self.avaliar_tabuleiro_onca()};
+        if !is_max_player {
+            pontuacao *= -1;
         }
+        return (None, pontuacao);
+    }
+    
 
-        let mut melhor_pontuacao = if is_max_player {
-            i32::min_value()
+    let mut melhor_pontuacao = if is_max_player { i32::min_value() } else { i32::max_value() };
+    let mut melhor_jogada = None;
+
+    let jogadas_possiveis = self.obter_jogadas_possiveis(jogador_da_vez);
+
+    for (from, to) in jogadas_possiveis {
+        let (captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes) = self.simular_jogada(from, to);
+
+        let (_, pontuacao) = self.minimax(
+            profundidade - 1, 
+            !is_max_player, 
+            if jogador_da_vez == "Matilha" { "Onça" } else { "Matilha" }
+        );
+
+        self.desfazer_jogada(from, to, captura, peca_movida, estado_anterior_jogada, estado_anterior_repeticoes);
+
+        if is_max_player {
+            if pontuacao > melhor_pontuacao {
+                melhor_pontuacao = pontuacao;
+                melhor_jogada = Some((from, to));
+            }
         } else {
-            i32::max_value()
-        };
-        let mut melhor_jogada = None;
-
-        let jogadas_possiveis = self.obter_jogadas_possiveis(jogador_da_vez);
-
-        for (from, to) in jogadas_possiveis {
-            let (peca_capturada, peca_movida) = self.simular_jogada(from, to);
-
-            let (_, pontuacao) = self.minimax(
-                profundidade - 1,
-                !is_max_player,
-                if jogador_da_vez == "Matilha" {
-                    "Onça"
-                } else {
-                    "Matilha"
-                },
-            );
-
-            self.desfazer_jogada(from, to, peca_capturada, peca_movida);
-
-            if is_max_player {
-                if pontuacao > melhor_pontuacao {
-                    melhor_pontuacao = pontuacao;
-                    melhor_jogada = Some((from, to));
-                }
-            } else {
-                if pontuacao < melhor_pontuacao {
-                    melhor_pontuacao = pontuacao;
-                    melhor_jogada = Some((from, to));
-                }
+            if pontuacao < melhor_pontuacao {
+                melhor_pontuacao = pontuacao;
+                melhor_jogada = Some((from, to));
             }
         }
-
-        (melhor_jogada, melhor_pontuacao)
     }
 
+    (melhor_jogada, melhor_pontuacao)
+}
     fn mover(&mut self, from: usize, to: usize) {
         let peca = self.posicoes.remove(&from).unwrap();
         self.posicoes.insert(to, peca);
@@ -382,17 +445,17 @@ impl Jogo {
             (17, vec![12, 16, 18, 22]),
             (18, vec![12, 13, 14, 17, 19, 22, 23, 24]),
             (19, vec![14, 18, 24]),
-            (20, vec![15, 16, 21, 25]),
-            (21, vec![16, 20, 22, 25, 26, 27]),
+            (20, vec![15, 16, 21]),
+            (21, vec![16, 20, 22]),
             (22, vec![16, 17, 18, 21, 23, 25, 26, 27]),
-            (23, vec![18, 22, 24, 26, 27, 30]),
-            (24, vec![18, 19, 23, 27]),
-            (25, vec![20, 21, 22, 26, 28]),
-            (26, vec![21, 22, 23, 25, 27, 28, 29, 30]),
-            (27, vec![21, 22, 24, 23, 26, 30]),
-            (28, vec![25, 26, 29]),
+            (23, vec![18, 22, 24]),
+            (24, vec![18, 19, 23]),
+            (25, vec![22, 26, 28]),
+            (26, vec![22, 25, 27, 29]),
+            (27, vec![22, 26, 30]),
+            (28, vec![25, 29]),
             (29, vec![26, 28, 30]),
-            (30, vec![26, 27, 29]),
+            (30, vec![27, 29]),
         ];
 
         for (k, ns) in adj {
@@ -418,7 +481,7 @@ impl Jogo {
             (17, vec![(22, 26)]),
             (18, vec![(12, 6), (22, 25)]),
             (20, vec![(16, 12)]),
-            (22, vec![(16, 10), (18, 14), (25, 28), (27, 30)]),
+            (22, vec![(16, 10), (18, 14), (25, 28), (26,29), (27, 30)]),
             (24, vec![(18, 12)]),
             (25, vec![(22, 18), (26, 27)]),
             (26, vec![(22, 17)]),
@@ -430,7 +493,6 @@ impl Jogo {
         for (k, js) in jumps {
             s.insert(k, js);
         }
-
         // Saltos horizontais para o grid 5x5
         for row in 0..5 {
             for col in 0..3 {
@@ -467,6 +529,9 @@ impl Clone for Jogo {
             vizinhos: self.vizinhos.clone(),
             saltos: self.saltos.clone(),
             cpu: self.cpu.clone(),
+            ultimas_jogadas: self.ultimas_jogadas.clone(),
+            contagem_repeticoes: self.contagem_repeticoes.clone(),
         }
     }
 }
+

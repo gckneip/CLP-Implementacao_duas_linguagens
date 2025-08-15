@@ -119,20 +119,17 @@ class TabuleiroFrame(tk.Frame):
 
     def on_click(self, event):
       x, y = event.x, event.y
-      casa_encontrada = False # Variável de flag para rastrear o clique
+      casa_encontrada = False
 
       for pos, (cx, cy) in self.coordenadas_casas.items():
           if (x - cx)**2 + (y - cy)**2 <= 15**2:
-              casa_encontrada = True # O clique foi em uma casa
+              casa_encontrada = True
               
-              # --- Lógica de Seleção e Jogada ---
-              # 1. Se a seleção está vazia, adiciona a casa
               if not self.selecao:
                   self.selecao.append(pos)
-              # 2. Se já tem uma casa selecionada, tenta fazer a jogada
               else:
                   from_pos, to_pos = self.selecao[0], pos
-                  self.selecao.append(pos) # Adiciona a segunda casa temporariamente para a jogada
+                  self.selecao.append(pos)
                   
                   try:
                       sucesso = self.jogo_rust.aplicar_jogada(from_pos, to_pos)
@@ -141,23 +138,30 @@ class TabuleiroFrame(tk.Frame):
                       sucesso = False
 
                   if sucesso:
+                      print(f"Jogada de {self.escolha_do_jogador} de {from_pos} para {to_pos} bem-sucedida.")
                       self.atualizar_tabuleiro()
-                      self.after(100, self.verificar_turno_cpu)
+                      if self.jogo_rust.jogo_terminou():
+                        messagebox.showinfo("Fim de Jogo", "O jogo terminou!")
+                      else:
+                      # Turno da CPU
+                        self.after(100, self.verificar_turno_cpu)
+                        self.jogo_rust.jogada_cpu()
+                        self.atualizar_tabuleiro()
+                        if self.jogo_rust.jogo_terminou():
+                            messagebox.showinfo("Fim de Jogo", "O jogo terminou!")
                   else:
                       messagebox.showinfo("Erro", "Jogada inválida")
 
-                  self.selecao = [] # Limpa a seleção após tentar a jogada
+                  self.selecao = [] 
               
-              break # Sai do loop for, pois a casa foi encontrada
+              break 
       
-      # --- Lógica para clique em área vazia ---
       if not casa_encontrada:
-          # Se o loop terminou e nenhuma casa foi encontrada...
-          if self.selecao: # ... e se houver uma casa selecionada
-              self.selecao = [] # Limpa a seleção
-              self.atualizar_tabuleiro() # Atualiza o visual para desmarcar a peça
+          if self.selecao:
+              self.selecao = [] 
+              self.atualizar_tabuleiro() 
               
-      self.atualizar_tabuleiro() # Atualiza o tabuleiro, caso a seleção tenha mudado
+      self.atualizar_tabuleiro() 
 
 
 class App(tk.Tk):
