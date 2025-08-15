@@ -20,3 +20,26 @@ A arquitetura foi projetada para explorar ao máximo as vantagens de cada lingua
 * `Cargo.toml`: O manifesto da parte em **Rust** do projeto. Ele lista informações do projeto e suas dependências.
 * `requirements.txt`: Uma lista simples dos pacotes **Python** necessários para o projeto.
 ---
+
+### Como executar
+Dentro de um [enviroment do python ](https://docs.python.org/pt-br/3.13/tutorial/venv.html), instale as dependências utilizando o comando abaixo:
+```bash
+pip install -r requirements.txt
+```
+
+Então, dentro do env, rode o maturin para compilar o código em **Rust**:
+```bash
+maturin develop
+```
+
+Por fim, rode o programa em **Python**:
+```bash
+python main.py
+```
+
+### Aproveite o jogo!
+Se tiver duvidas de como jogar, leia as [regras do jogo da onça](https://nova-escola-producao.s3.amazonaws.com/vYfWM25yYpjxM4rXaa6BaHXMsSSjNZDy5nabwEZfr6DPxfzBE5qjFwXJ2JJS/his7-09und05-regras-do-jogo-da-onca.pdf)!
+## Criado por
+- **Gustavo Cunha Kneip**
+- **Antônio Araújo de Brum**
+- **Matheus Renan Freitas de Freitas**
