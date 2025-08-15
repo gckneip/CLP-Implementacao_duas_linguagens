@@ -68,13 +68,14 @@ impl Jogo {
                 let jogador_da_vez = self.vez.clone();
                 let jogada_atual = (from, to);
 
-                let mut contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+                let contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
 
                 if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
                     if *ultima_jogada == (to, from) {
                         *contador += 1;
                     } else {
                         *contador = 1;
+                        self.ultimas_jogadas.clear();
                     }
                 } else {
                     *contador = 1;
@@ -156,9 +157,6 @@ impl Jogo {
             handles.push(handle);
         }
 
-        let mut melhor_pontuacao = i32::min_value();
-        let mut melhor_jogada = None;
-
         for handle in handles {
             let (from, to, pontuacao) = handle.join().unwrap();
             if pontuacao > melhor_pontuacao {
@@ -182,7 +180,7 @@ impl Jogo {
             return true;
         }
         if let Some(contador) = self.contagem_repeticoes.get(&self.vez) {
-        if *contador >= 3 {
+        if *contador > 3 {
             return true;
         }
     } 
@@ -239,7 +237,7 @@ fn simular_jogada(&mut self, from: usize, to: usize) -> (Option<(usize, String)>
 
     let jogador_da_vez = self.vez.clone();
     let jogada_atual = (from, to);
-    let mut contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
+    let contador = self.contagem_repeticoes.entry(jogador_da_vez.clone()).or_insert(0);
 
     if let Some(ultima_jogada) = self.ultimas_jogadas.get(&jogador_da_vez) {
         if *ultima_jogada == jogada_atual {
