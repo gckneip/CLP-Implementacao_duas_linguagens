@@ -1,56 +1,22 @@
-# CLP-Implementacao_duas_linguagens
+# Jogo da onça hibrido
 
-## Grupo
-Até 4 integrantes
+Este projeto é uma implementação híbrida do [Jogo da Onça](https://pt.wikipedia.org/wiki/Jogo_da_on%C3%A7a), unindo a simplicidade e flexibilidade do **Python** à alta performance do **Rust**.  
+A arquitetura foi projetada para explorar ao máximo as vantagens de cada linguagem: o **Python** é responsável pela interface e pelo gerenciamento geral do jogo, enquanto o **Rust** executa operações críticas com máxima eficiência — incluindo o processamento da inteligência artificial adversária, que utiliza o algoritmo *minimax* com suporte a *multithreading*, aproveitando todo o potencial de paralelismo do Rust.
 
-## Data de entrega
-**14 de agosto de 2025**
 
 ---
 
-## Especificação
-Implementar uma aplicação gráfica (sugestão: fractal de Mandelbrot, ray tracing, simulação de partículas) com apoio de **duas linguagens de programação**, à escolha.
+### Código Fonte
 
-O desafio consiste em realizar o uso conjunto dessas linguagens, sendo que:
-- **Uma** deve oferecer a interface com o usuário e apresentar a imagem gerada.
-- **A outra** deve implementar o serviço de cálculo desejado.
-
-> **Importante:** A aplicação gráfica em si **não será o objeto principal de avaliação**. As sugestões fornecidas são exemplos que possuem códigos prontos na internet.  
-> O foco do trabalho é o uso combinado de duas ferramentas de programação com vocações distintas.
+* `src/jogo.rs`: O principal arquivo fonte em **Rust** que contém a lógica do jogo.
+* `src/lib.rs`: O arquivo de biblioteca **Rust** que provavelmente expõe funções a serem chamadas do Python. É o núcleo da biblioteca compilada `pintada`.
+* `board_state.py`: Um arquivo **Python** que gerencia o estado do tabuleiro do jogo.
+* `main.py`: O ponto de entrada principal para a aplicação **Python**. Este script conecta todas as partes, usando a lógica do tabuleiro em Python e chamando funções da biblioteca Rust compilada.
 
 ---
 
-## Material a ser entregue
-O trabalho deverá compor um **repositório no GitHub**, e o link desse repositório deve ser informado como resposta à tarefa.
+### Arquivos de Configuração e Compilação
 
-O diretório do repositório deve conter, no mínimo:
-
-1. **`README.md`**  
-   - Explicação dos arquivos que compõem o repositório  
-   - Como compilar o programa  
-   - Como executar o programa  
-   - Lista de pacotes extras necessários (se houver)
-
-2. **`Makefile`**  
-   - Entrada para geração do executável  
-   - Entrada para execução de um caso de estudo
-
-3. **Todos os fontes desenvolvidos**  
-   - Documentação da implementação **nos próprios fontes** é requisito fundamental.
-
-4. **Documentação em PDF**  
-   - Breve apresentação da aplicação escolhida  
-   - Qual linguagem foi utilizada em qual parte do código  
-   - Explicação dos métodos utilizados para permitir a interface entre as duas linguagens
-
-
-## O que falta
-
-- AI da onça
-- Jogar de matilha
-- Verificar condição de fim de jogo
-- Empatar/ proibir lances repetidos
-- README completo
-  - Instruções de instalação
-  - Instruções de execução
-- PDF de documentação
+* `Cargo.toml`: O manifesto da parte em **Rust** do projeto. Ele lista informações do projeto e suas dependências.
+* `requirements.txt`: Uma lista simples dos pacotes **Python** necessários para o projeto.
+---
