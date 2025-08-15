@@ -67,7 +67,7 @@ impl Jogo {
                 let jogador_da_vez = self.vez.clone();
                 let jogada_atual = (from, to);
 
-                let mut contador = self
+                let contador = self
                     .contagem_repeticoes
                     .entry(jogador_da_vez.clone())
                     .or_insert(0);
@@ -277,7 +277,7 @@ impl Jogo {
 
         let jogador_da_vez = self.vez.clone();
         let jogada_atual = (from, to);
-        let mut contador = self
+        let contador = self
             .contagem_repeticoes
             .entry(jogador_da_vez.clone())
             .or_insert(0);
@@ -457,7 +457,7 @@ impl Jogo {
         jogador_da_vez: &str,
     ) -> (Option<(usize, usize)>, i32) {
         if profundidade == 0 || self.jogo_terminou() {
-            let mut pontuacao = if self.cpu == "Matilha" {
+            let pontuacao = if self.cpu == "Matilha" {
                 self.avaliar_tabuleiro_matilha()
             } else {
                 self.avaliar_tabuleiro_onca()

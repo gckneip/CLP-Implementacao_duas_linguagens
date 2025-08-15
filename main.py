@@ -159,7 +159,6 @@ class TabuleiroFrame(tk.Frame):
                       sucesso = False
 
                   if sucesso:
-                      print(f"Jogada de {self.escolha_do_jogador} de {from_pos} para {to_pos} bem-sucedida.")
                       self.atualizar_tabuleiro()
                       if self.jogo_rust.jogo_terminou():
                         messagebox.showinfo("Fim de Jogo", "O jogo terminou!")
