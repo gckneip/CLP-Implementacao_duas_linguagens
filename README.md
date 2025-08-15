@@ -22,7 +22,11 @@ A arquitetura foi projetada para explorar ao máximo as vantagens de cada lingua
 ---
 
 ### Como executar
-Dentro de um [enviroment do python ](https://docs.python.org/pt-br/3.13/tutorial/venv.html), instale as dependências utilizando o comando abaixo:
+Crie um environment python (mais informações em [env python](https://docs.python.org/pt-br/3.13/tutorial/venv.html)): 
+```bash
+python -m venv nome-do-env
+```
+Dentro do ambiente python instale as dependências utilizando o comando abaixo:
 ```bash
 pip install -r requirements.txt
 ```
