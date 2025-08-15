@@ -9,20 +9,42 @@ class MenuFrame(tk.Frame):
     def __init__(self, master, switch_to_board_callback):
         super().__init__(master)
         self.switch_to_board_callback = switch_to_board_callback
+        self.configure(bg="#FFFFFF")
 
         tk.Label(self, text="Bem vindo ao", font=("Arial", 16)).pack(pady=10)
         tk.Label(self, text="JOGO DA ONÇA", font=("Arial", 32, "bold"), fg="#D2691E").pack(pady=10)
 
-        pintada_img = Image.open("./assets/pintada.jpg")
+        max_width = 300
+
+        pintada_img = Image.open("./assets/pintada.png")
         matilha_img = Image.open("./assets/matilha.png")
+
+        def resize_image(img, max_width):
+            if img.width > max_width:
+                w_percent = max_width / float(img.width)
+                h_size = int(float(img.height) * w_percent)
+                img = img.resize((max_width, h_size))
+            return img
+
+        pintada_img = resize_image(pintada_img, max_width)
+        matilha_img = resize_image(matilha_img, max_width)
+
         self.pintada_img = ImageTk.PhotoImage(pintada_img)
         self.matilha_img = ImageTk.PhotoImage(matilha_img)
 
         tk.Label(self, text="Deseja jogar como...").pack(pady=20)
-        tk.Button(self, text="Onça", command=lambda: self.switch_to_board_callback("Onça")).pack(pady=5)
-        tk.Label(self, image=self.pintada_img).pack(pady=10)
-        tk.Button(self, text="Matilha", command=lambda: self.switch_to_board_callback("Matilha")).pack(pady=5)
-        tk.Label(self, image=self.matilha_img).pack(pady=10)
+        frame = tk.Frame(self, bg="#FFFFFF")
+        frame.pack(pady=20)
+
+        onca_frame = tk.Frame(frame, bg="#FFFFFF")
+        onca_frame.grid(row=0, column=0, padx=20)
+        tk.Button(onca_frame, text="Onça", command=lambda: self.switch_to_board_callback("Onça")).pack()
+        tk.Label(onca_frame, image=self.pintada_img,bd=0).pack()
+
+        matilha_frame = tk.Frame(frame, bg="#FFFFFF")
+        matilha_frame.grid(row=0, column=1, padx=20)
+        tk.Button(matilha_frame, text="Matilha", command=lambda: self.switch_to_board_callback("Matilha")).pack()
+        tk.Label(matilha_frame, image=self.matilha_img, bd=0).pack()
 
 # Classe Tabuleiro
 class TabuleiroFrame(tk.Frame):
