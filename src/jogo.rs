@@ -325,45 +325,46 @@ fn desfazer_jogada(&mut self, from: usize, to: usize, captura: Option<(usize, St
     }
 
     fn avaliar_tabuleiro_onca(&self) -> i32 {
-        let peso_pecas = 0;
-        let peso_mobilidade_onca = 50;
-        let peso_posicao_central_onca = 20;
+      let peso_pecas = -100;
+      let peso_mobilidade_onca = 50;
+      let peso_posicao_central_onca = 20;
 
-        let mut pontuacao = 0;
+      let mut pontuacao = 0;
 
-        let pecas_matilha = self.posicoes.values().filter(|p| *p == "Matilha").count();
-        pontuacao += pecas_matilha as i32 * peso_pecas;
+      let pecas_matilha = self.posicoes.values().filter(|p| *p == "Matilha").count();
+      pontuacao += pecas_matilha as i32 * peso_pecas;
 
-        let mut mobilidade_onca = 0;
-        let pos_onca = self
-            .posicoes
-            .iter()
-            .find(|(_, &ref p)| p == "Onça")
-            .map(|(&k, _)| k);
+      let mut mobilidade_onca = 0;
+      let pos_onca = self
+          .posicoes
+          .iter()
+          .find(|(_, &ref p)| p == "Onça")
+          .map(|(&k, _)| k);
 
-        if let Some(pos) = pos_onca {
-            if let Some(vizinhos) = self.vizinhos.get(&pos) {
-                for &vizinho_pos in vizinhos {
-                    if !self.posicoes.contains_key(&vizinho_pos) {
-                        mobilidade_onca += 1;
-                    }
-                }
-            }
-        }
-        pontuacao += mobilidade_onca * peso_mobilidade_onca;
+      if let Some(pos) = pos_onca {
+          if let Some(vizinhos) = self.vizinhos.get(&pos) {
+              for &vizinho_pos in vizinhos {
+                  if !self.posicoes.contains_key(&vizinho_pos) {
+                      mobilidade_onca += 1;
+                  }
+              }
+          }
+      }
+      pontuacao += mobilidade_onca * peso_mobilidade_onca;
 
-        if let Some(pos) = pos_onca {
-            if pos == 12 {
-                pontuacao += peso_posicao_central_onca;
-            }
-        }
+      if let Some(pos) = pos_onca {
+          if pos == 12 {
+              pontuacao += peso_posicao_central_onca;
+          }
+      }
 
-        if mobilidade_onca == 0 && pos_onca.is_some() {
-            pontuacao = i32::max_value();
-        }
+      if mobilidade_onca == 0 && pos_onca.is_some() {
+          // caught in the undertow just caught in the undertow
+          pontuacao = i32::MIN;
+      }
 
-        pontuacao
-    }
+      pontuacao
+  }
 
   fn minimax(
     &mut self,
